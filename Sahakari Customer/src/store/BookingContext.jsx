@@ -62,6 +62,40 @@ export const BookingProvider = ({ children }) => {
         }
 
         const mergedList = Array.from(combinedMap.values());
+        
+        // Inject a demo COMPLETED request if it doesn't exist
+        if (!mergedList.some(b => b.id === 'BK-DEMO-COMPLETED')) {
+          mergedList.push({
+            id: 'BK-DEMO-COMPLETED',
+            customerId: activeUid || 'demo-user',
+            customerName: user?.name || 'Customer',
+            serviceId: 'appliance',
+            serviceName: 'Washing Machine Repair',
+            category: 'appliance',
+            workerId: 'worker-2',
+            workerName: 'Amit Verma',
+            workerPhone: '+91 88888 77777',
+            date: new Date().toISOString().split('T')[0],
+            time: '02:00 PM',
+            address: user?.address || '123 Main St, New Delhi',
+            city: 'New Delhi',
+            pincode: '110001',
+            agreedPrice: 850,
+            platformFee: 42,
+            taxes: 45,
+            totalPrice: 937,
+            status: 'COMPLETED',
+            statusLabel: 'SERVICE COMPLETED',
+            createdAt: new Date(Date.now() - 86400000).toISOString(),
+            worker: {
+              id: 'worker-2',
+              name: 'Amit Verma',
+              rating: 4.9,
+              avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=400'
+            }
+          });
+        }
+
         if (mergedList.length > 0) {
           setBookings(mergedList);
           localStorage.setItem('sahakari_bookings', JSON.stringify(mergedList));
@@ -103,27 +137,40 @@ export const BookingProvider = ({ children }) => {
     setActiveNegotiation((prev) => (prev ? { ...prev, agreedPrice: price } : null));
   };
 
-  const updateBookingStatus = (status, statusLabel) => {
+  const updateBookingStatus = (arg1, arg2, arg3) => {
+    let targetId, status, statusLabel;
+    
+    const KNOWN_STATUSES = ['REQUEST_SUBMITTED', 'PENDING_PAYMENT', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'ON_THE_WAY', 'IN_PROGRESS'];
+    
+    // Support (bookingId, status, statusLabel) OR (status, statusLabel)
+    if (arg3 !== undefined || (typeof arg1 === 'string' && !KNOWN_STATUSES.includes(arg1))) {
+      targetId = arg1;
+      status = arg2;
+      statusLabel = arg3 || arg2;
+    } else {
+      targetId = currentBooking?.id;
+      status = arg1;
+      statusLabel = arg2 || arg1;
+    }
+
+    console.log('[updateBookingStatus]', { arg1, arg2, arg3, targetId, status, statusLabel });
+
+    if (!targetId) return;
+
     setCurrentBooking((prev) => {
-      if (!prev) return null;
-      const updated = {
-        ...prev,
-        status,
-        statusLabel: statusLabel || status,
-      };
-      if (updated.id) {
-        firebaseDb.updateBookingStatus(updated.id, status, statusLabel);
-      }
-      return updated;
+      if (!prev || prev.id !== targetId) return prev;
+      return { ...prev, status, statusLabel };
     });
 
     setBookings((prev) => {
       const updatedList = prev.map((b) =>
-        b.id === currentBooking?.id ? { ...b, status, statusLabel: statusLabel || status } : b
+        b.id === targetId ? { ...b, status, statusLabel } : b
       );
       localStorage.setItem('sahakari_bookings', JSON.stringify(updatedList));
       return updatedList;
     });
+
+    firebaseDb.updateBookingStatus(targetId, status, statusLabel).catch(() => {});
   };
 
   const setBookingDetails = (details) => {
@@ -141,6 +188,13 @@ export const BookingProvider = ({ children }) => {
     };
 
     setCurrentBooking(formattedBooking);
+    
+    setBookings((prev) => {
+      if (prev.some((b) => b.id === formattedBooking.id)) return prev;
+      const updated = [formattedBooking, ...prev];
+      localStorage.setItem('sahakari_bookings', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const addBooking = async (newBooking) => {

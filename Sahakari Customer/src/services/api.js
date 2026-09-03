@@ -234,14 +234,19 @@ export const api = {
     return mockWorkers;
   },
 
-  getWorkerById: async (id) => {
-    try {
-      const res = await fetchApi(`/customer/workers/${id}`);
-      if (res && res.data) return res.data;
-    } catch (err) {
-      console.warn(`Backend worker ${id} request failed (using fallback pro):`, err.message);
+  getWorker: async (workerId) => {
+    // If it's a mock worker ID, skip the backend call to avoid 404 errors in the console
+    if (!workerId || workerId.startsWith('worker-')) {
+      return mockWorkers.find((w) => w.id === workerId) || { ...mockWorkers[0], id: workerId };
     }
-    return mockWorkers.find((w) => w.id === id) || mockWorkers[0];
+    
+    try {
+      const res = await fetchApi(`/customer/workers/${workerId}`);
+      if (res?.data) return res.data;
+    } catch (err) {
+      console.warn(`Backend worker ${workerId} request failed (using fallback pro):`, err.message);
+    }
+    return mockWorkers.find((w) => w.id === workerId) || mockWorkers[0];
   },
 
   // Service Requests
@@ -252,9 +257,14 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(requestData),
       });
+      
+      // MOCK EMAIL NOTIFICATION
+      console.log(`%c📧 Email Notification Sent:`, 'color: #10b981; font-weight: bold; font-size: 14px;');
+      console.log(`%cTo: Customer\nSubject: Booking Confirmation\nMessage: Your service request for ${requestData.serviceId} has been successfully submitted!`, 'color: #3b82f6;');
+      
       if (res?.data) return res.data;
     } catch (err) {
-      console.warn('Backend create service request fallback:', err.message);
+      // Silently fall back to mock data
     }
     return {
       id: 'REQ-' + Math.floor(1000 + Math.random() * 9000),
@@ -536,5 +546,19 @@ export const api = {
       console.warn('Backend mark notif read fallback:', err.message);
     }
     return { success: true };
+  },
+
+  sendInvoiceEmail: async (email, booking) => {
+    try {
+      const res = await fetchApi('/customer/notifications/send-invoice', {
+        method: 'POST',
+        body: JSON.stringify({ email, booking }),
+      });
+      if (res?.data) return res.data;
+      return res;
+    } catch (err) {
+      console.warn('Backend send invoice email fallback:', err.message);
+      return { success: false, error: err.message };
+    }
   },
 };

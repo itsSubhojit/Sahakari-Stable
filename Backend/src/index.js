@@ -14,3 +14,5 @@ app.listen(PORT, async () => {
   console.log(`Server running on Port ${PORT}`);
   await syncAllCustomerSchemas();
 });
+
+// Trigger nodemon reload

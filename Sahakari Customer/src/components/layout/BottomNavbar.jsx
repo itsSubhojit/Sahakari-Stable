@@ -16,14 +16,20 @@ export const BottomNavbar = () => {
       activeMatch: (p) => p === '/' || p === '/services',
     },
     {
-      to: '/tracking/BK-7892',
+      to: '/book',
+      labelKey: 'nav.bookService',
+      icon: 'edit_document',
+      activeMatch: (p) => p === '/book',
+    },
+    {
+      to: '/tracking',
       labelKey: 'nav.liveTrack',
       icon: 'near_me',
       isLive: true,
       activeMatch: (p) => p.startsWith('/tracking'),
     },
     {
-      to: '/booking/BK-7892',
+      to: '/booking',
       labelKey: 'nav.bookings',
       icon: 'calendar_month',
       activeMatch: (p) => p.startsWith('/booking'),

@@ -1,0 +1,15 @@
+{
+  "short_name": "Sahakari",
+  "name": "Sahakari - Local Services & Smart Negotiation",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#fcf9f6",
+  "theme_color": "#012d1d",
+  "display": "standalone"
+}

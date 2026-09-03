@@ -33,16 +33,16 @@ export const Header = ({ showBack = true, title = 'Sahakari' }) => {
     {
       to: '/book',
       labelKey: 'nav.bookService',
-      activeMatch: (p) => p.startsWith('/book'),
+      activeMatch: (p) => p === '/book',
     },
     {
-      to: '/tracking/BK-7892',
+      to: '/tracking',
       labelKey: 'nav.liveTrack',
       isLive: true,
       activeMatch: (p) => p.startsWith('/tracking'),
     },
     {
-      to: '/booking/BK-7892',
+      to: '/booking',
       labelKey: 'nav.bookings',
       activeMatch: (p) => p.startsWith('/booking'),
     },
@@ -173,15 +173,7 @@ export const Header = ({ showBack = true, title = 'Sahakari' }) => {
               </span>
             </button>
 
-            {/* Worker Portal Switcher */}
-            <NavLink
-              to="/worker"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-full bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 transition-all shadow-xs"
-            >
-              <span className="material-symbols-outlined text-[15px]">engineering</span>
-              <span>Worker Hub</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            </NavLink>
+
 
             {/* Language Switcher */}
             <div className="relative" ref={langMenuRef}>
@@ -192,7 +184,6 @@ export const Header = ({ showBack = true, title = 'Sahakari' }) => {
                 aria-label="Change language"
                 className="flex items-center gap-1.5 text-[12px] font-bold text-on-surface-variant hover:text-primary bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/60 px-2.5 py-1.5 rounded-full transition-all cursor-pointer select-none"
               >
-                <span className="text-[14px] leading-none">{currentLang.flag}</span>
                 <span className="hidden sm:inline uppercase tracking-wide">{currentLang.code}</span>
                 <span className="material-symbols-outlined text-[14px]">
                   {langMenuOpen ? 'expand_less' : 'expand_more'}
@@ -215,7 +206,6 @@ export const Header = ({ showBack = true, title = 'Sahakari' }) => {
                           : 'text-on-surface hover:bg-surface-container-high'
                       }`}
                     >
-                      <span className="text-lg leading-none">{lng.flag}</span>
                       <div className="text-left">
                         <div className="font-semibold text-[13px] leading-tight">{lng.native}</div>
                         <div className="text-[11px] text-on-surface-variant leading-tight">{lng.label}</div>
@@ -286,18 +276,7 @@ export const Header = ({ showBack = true, title = 'Sahakari' }) => {
               );
             })}
 
-            <NavLink
-              to="/worker"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center justify-between py-2.5 px-3 rounded-xl text-sm transition-all bg-primary/10 text-primary font-bold border border-primary/25"
-            >
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px]">engineering</span>
-                <span>Worker Hub & Console</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              </div>
-              <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-            </NavLink>
+
           </div>
 
           <div className="pt-3 border-t border-outline-variant/60 flex flex-col gap-2">
@@ -321,7 +300,6 @@ export const Header = ({ showBack = true, title = 'Sahakari' }) => {
                         : 'bg-surface-container-low border-outline-variant/50 text-on-surface-variant hover:bg-surface-container-high'
                     }`}
                   >
-                    <span className="text-base leading-none">{lng.flag}</span>
                     <span className="text-[10px] leading-tight">{lng.native}</span>
                   </button>
                 ))}

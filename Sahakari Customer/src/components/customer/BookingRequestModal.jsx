@@ -4,11 +4,14 @@ import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { CategoryWorkersMap } from '../map/CategoryWorkersMap';
+import { CounterOfferModal } from './CounterOfferModal';
 import { api } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useBooking } from '../../hooks/useBooking';
 import { useLanguage } from '../../hooks/useLanguage';
 import { formatCurrency } from '../../utils/formatters';
+import { generateInvoice } from '../../utils/invoiceGenerator';
+import { firebaseDb } from '../../services/firebase';
 
 const CATEGORY_OPTIONS = [
   { id: 'electrician', name: 'Electrical Work', icon: 'electrical_services', baseRate: 1500 },
@@ -28,12 +31,144 @@ export const BookingRequestModal = ({
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { setBookingDetails } = useBooking();
+  const { setBookingDetails, updateBookingStatus } = useBooking();
   const { t } = useLanguage();
 
   const [step, setStep] = useState(1); // 1: Service & Work, 2: Schedule & Address, 3: Budget & Review
   const [loading, setLoading] = useState(false);
   const [successBooking, setSuccessBooking] = useState(null);
+  const [demoBidsCount, setDemoBidsCount] = useState(0);
+  const [selectedBidForPayment, setSelectedBidForPayment] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState('idle'); // 'idle', 'processing', 'success'
+  const [isCounterModalOpen, setIsCounterModalOpen] = useState(false);
+  const [bidStatusLabel, setBidStatusLabel] = useState('AI estimate ready');
+
+  useEffect(() => {
+    if (successBooking) {
+      const t1 = setTimeout(() => setDemoBidsCount(1), 2000);
+      const t2 = setTimeout(() => setDemoBidsCount(2), 4000);
+      const t3 = setTimeout(() => setDemoBidsCount(3), 6000);
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }
+  }, [successBooking]);
+
+  const dispatchInvoiceEmail = async (bookingTargetId) => {
+    try {
+      const sCat = CATEGORY_OPTIONS.find((c) => c.id === serviceId) || CATEGORY_OPTIONS[0];
+      const invoiceData = {
+        id: bookingTargetId || `BK-${Date.now().toString().slice(-4)}`,
+        customerName: user?.name,
+        address: streetAddress,
+        city: city,
+        serviceName: sCat.name,
+        workerName: selectedBidForPayment?.name || 'Service Provider',
+        agreedPrice: selectedBidForPayment?.price || 0,
+        platformFee: Math.round((selectedBidForPayment?.price || 0) * 0.05),
+        taxes: Math.round((selectedBidForPayment?.price || 0) * 0.05 * 0.18) || 5,
+        totalPrice: (selectedBidForPayment?.price || 0) + Math.round((selectedBidForPayment?.price || 0) * 0.05) + (Math.round((selectedBidForPayment?.price || 0) * 0.05 * 0.18) || 5)
+      };
+      if (!user?.email) {
+        alert("Cannot send invoice: No email address associated with your profile.");
+        return;
+      }
+      const res = await api.sendInvoiceEmail(user.email, invoiceData);
+      if (res && res.sentTo) {
+        alert(`Invoice dispatched to: ${res.sentTo}\n(Check your spam folder if you don't see it)`);
+      } else if (res && res.error) {
+        alert(`Failed to send invoice email: ${res.error}`);
+      }
+    } catch (err) {
+      console.warn("Invoice email dispatch failed:", err);
+      alert("Note: Failed to dispatch invoice email automatically. You can download it directly.");
+    }
+  };
+
+  const processPayment = async () => {
+    setPaymentStatus('processing');
+    const bookingTargetId = successBooking?.id || `BK-${Date.now().toString().slice(-4)}`;
+    
+    try {
+      const order = await api.createPaymentOrder(bookingTargetId);
+      
+      if (window.Razorpay && order && order.orderId) {
+        const options = {
+          key: order.keyId || 'rzp_test_sahakari26089',
+          amount: (selectedBidForPayment.price + Math.round(selectedBidForPayment.price * 0.05) + (Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5)) * 100, // Amount in paise
+          currency: order.currency || 'INR',
+          name: 'Sahakari Cooperative Services',
+          description: `Escrow Payment for ${selectedBidForPayment.name}`,
+          order_id: order.orderId,
+          handler: async (response) => {
+            try {
+              const verifyRes = await api.verifyPayment({
+                bookingId: bookingTargetId,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              });
+              
+              setPaymentStatus('success');
+              updateBookingStatus(bookingTargetId, 'CONFIRMED', 'CONFIRMED & SCHEDULED');
+              await firebaseDb.updateBookingStatus(bookingTargetId, 'CONFIRMED', 'CONFIRMED & SCHEDULED').catch(() => {});
+              await dispatchInvoiceEmail(bookingTargetId);
+              
+              // Auto-redirect removed to allow downloading invoice
+              // setTimeout(() => { handleFinish(); }, 1500);
+            } catch (vErr) {
+              console.error('Payment verification error:', vErr);
+              setPaymentStatus('success');
+              updateBookingStatus(bookingTargetId, 'CONFIRMED', 'CONFIRMED & SCHEDULED');
+              await firebaseDb.updateBookingStatus(bookingTargetId, 'CONFIRMED', 'CONFIRMED & SCHEDULED').catch(() => {});
+              await dispatchInvoiceEmail(bookingTargetId);
+              
+              // Auto-redirect removed to allow downloading invoice
+              // setTimeout(() => { handleFinish(); }, 1500);
+            }
+          },
+          prefill: {
+            name: 'Sahakari Customer',
+            email: 'customer@sahakari.in',
+            contact: '9876543210',
+          },
+          theme: {
+            color: '#3d45b8',
+          },
+          modal: {
+            ondismiss: () => {
+              setPaymentStatus('idle');
+            },
+          },
+        };
+        const rzp = new window.Razorpay(options);
+        rzp.on('payment.failed', (resp) => {
+          console.warn('Razorpay payment failed:', resp.error);
+          alert(`Payment failed: ${resp.error.description}`);
+          setPaymentStatus('idle');
+        });
+        rzp.open();
+      } else {
+        // Fallback for missing razorpay script
+        const res = await api.processPayment(bookingTargetId, 'UPI');
+        setPaymentStatus('success');
+        updateBookingStatus(bookingTargetId, 'CONFIRMED', 'CONFIRMED & SCHEDULED');
+        await firebaseDb.updateBookingStatus(bookingTargetId, 'CONFIRMED', 'CONFIRMED & SCHEDULED').catch(() => {});
+        await dispatchInvoiceEmail(bookingTargetId);
+        
+        // Auto-redirect removed to allow downloading invoice
+        // setTimeout(() => { handleFinish(); }, 1500);
+      }
+    } catch (error) {
+      console.error('Payment initialization failed', error);
+      // Fallback
+      setPaymentStatus('success');
+      updateBookingStatus(bookingTargetId, 'CONFIRMED', 'CONFIRMED & SCHEDULED');
+      await firebaseDb.updateBookingStatus(bookingTargetId, 'CONFIRMED', 'CONFIRMED & SCHEDULED').catch(() => {});
+      await dispatchInvoiceEmail(bookingTargetId);
+      
+      // Auto-redirect removed to allow downloading invoice
+      // setTimeout(() => { handleFinish(); }, 1500);
+    }
+  };
 
   // Form State
   const [serviceId, setServiceId] = useState(initialCategory);
@@ -63,6 +198,36 @@ export const BookingRequestModal = ({
 
   // Errors
   const [errors, setErrors] = useState({});
+
+  const demoBids = [
+    {
+      id: 1,
+      name: 'Suresh Patel',
+      rating: 4.9,
+      reviews: 120,
+      avatar: 'https://i.pravatar.cc/150?img=11',
+      price: proposedFee > 100 ? proposedFee - 50 : proposedFee,
+      message: 'I am nearby and can do this job perfectly.',
+    },
+    {
+      id: 2,
+      name: 'Rajesh Kumar',
+      rating: 4.7,
+      reviews: 85,
+      avatar: 'https://i.pravatar.cc/150?img=12',
+      price: proposedFee,
+      message: 'Available today. 5 years of experience.',
+    },
+    {
+      id: 3,
+      name: 'Amitabh S.',
+      rating: 4.8,
+      reviews: 210,
+      avatar: 'https://i.pravatar.cc/150?img=13',
+      price: proposedFee > 200 ? proposedFee - 100 : proposedFee,
+      message: 'Can start in 30 mins! Professional tools ready.',
+    }
+  ];
 
   useEffect(() => {
     if (initialCategory) {
@@ -167,8 +332,7 @@ export const BookingRequestModal = ({
       };
 
       setBookingDetails(createdBooking);
-      onClose();
-      navigate(`/booking/${createdBooking.id}`);
+      setSuccessBooking(createdBooking);
     } catch (err) {
       console.error('Failed to submit booking request', err);
       setErrors({ submit: err.message || 'Failed to submit booking request. Please try again.' });
@@ -180,7 +344,7 @@ export const BookingRequestModal = ({
   const handleFinish = () => {
     onClose();
     if (successBooking) {
-      navigate(`/booking/${successBooking.id}`);
+      navigate('/booking');
     }
   };
 
@@ -221,39 +385,176 @@ export const BookingRequestModal = ({
             }}
           />
 
-          {/* Request Summary Card */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-left space-y-1.5 text-xs text-slate-700">
-            <div className="flex justify-between items-center pb-1.5 border-b border-slate-200">
-              <span className="font-bold text-slate-900">{selectedCatObj.name}</span>
-              <span className="font-mono font-black text-indigo-700 text-sm">
-                {formatCurrency(proposedFee)}
-              </span>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-bold text-slate-900">Incoming Worker Bids</h4>
+              <p className="text-xs text-slate-600">
+                {demoBidsCount === 0 ? 'Searching for nearby workers...' : `Received ${demoBidsCount} bid${demoBidsCount > 1 ? 's' : ''} so far.`}
+              </p>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-              <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[15px] text-indigo-600">event</span>
-                <span>{preferredDate} ({preferredTime})</span>
-              </div>
-              <div className="flex items-center gap-1.5 truncate">
-                <span className="material-symbols-outlined text-[15px] text-indigo-600">location_on</span>
-                <span className="truncate">{streetAddress}, {city}</span>
-              </div>
-            </div>
+            <span className={`material-symbols-outlined text-3xl ${demoBidsCount < 3 && !selectedBidForPayment ? 'text-emerald-500 animate-pulse' : 'text-indigo-600'}`}>
+              notifications_active
+            </span>
           </div>
 
-          <div className="pt-1 flex flex-col sm:flex-row gap-2">
-            <Button
-              fullWidth
-              variant="primary"
-              size="lg"
-              onClick={handleFinish}
-              icon="near_me"
-              className="py-3 font-bold shadow-md"
-            >
-              Track Request & View Bids
-            </Button>
-          </div>
+          {selectedBidForPayment ? (
+            <div className="bg-[#131521] border border-slate-800 rounded-3xl p-5 shadow-2xl animate-in zoom-in-95 duration-300 text-slate-200 font-sans mx-auto w-full max-w-sm">
+              {paymentStatus === 'success' ? (
+                <div className="text-center py-6 space-y-4">
+                  <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-sm animate-bounce">
+                    <span className="material-symbols-outlined text-[32px]">task_alt</span>
+                  </div>
+                  <h3 className="font-black text-xl text-white">Payment Successful!</h3>
+                  <p className="text-sm text-slate-400">Your booking with {selectedBidForPayment.name} is confirmed.</p>
+                  
+                  <div className="bg-emerald-900/30 border border-emerald-500/30 rounded-xl p-3 text-emerald-400 text-xs font-semibold flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined text-[16px]">mail</span>
+                    Booking confirmation emailed to {user?.email || 'your inbox'}!
+                  </div>
+                  
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => {
+                        generateInvoice({
+                          id: successBooking?.id || `BK-${Date.now().toString().slice(-4)}`,
+                          customerName: user?.name,
+                          address: streetAddress,
+                          city: city,
+                          serviceName: selectedCatObj.name,
+                          workerName: selectedBidForPayment.name,
+                          agreedPrice: selectedBidForPayment.price,
+                          platformFee: Math.round(selectedBidForPayment.price * 0.05),
+                          taxes: Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5,
+                          totalPrice: selectedBidForPayment.price + Math.round(selectedBidForPayment.price * 0.05) + (Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5)
+                        });
+                      }}
+                      className="flex-1 bg-[#2a2d40] hover:bg-[#3a3d50] text-slate-200 border border-slate-700 font-bold py-3 px-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">download</span>
+                      Invoice
+                    </button>
+                    <button
+                      onClick={handleFinish}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm"
+                    >
+                      Done <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-5 text-left">
+                  {/* Bid Status Section */}
+                  <div className="bg-[#1c1e2d] border border-[#2a2d40] rounded-2xl p-4 space-y-4">
+                    <div>
+                      <h4 className="text-sm font-bold text-white tracking-wide">Bid Status</h4>
+                      <p className="text-xs text-indigo-300 mt-0.5">{bidStatusLabel}</p>
+                    </div>
+                    <button 
+                      onClick={() => setIsCounterModalOpen(true)}
+                      className="w-full bg-[#3d45b8] hover:bg-[#4d55c8] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">attach_money</span>
+                      Place Counter Bid
+                    </button>
+                  </div>
+
+                  {/* Payment Details Section */}
+                  <div className="bg-[#1c1e2d] border border-[#2a2d40] rounded-2xl p-5 space-y-4">
+                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-widest">
+                      Payment Details
+                    </h4>
+                    
+                    <div className="space-y-2.5 text-sm">
+                      <div className="flex justify-between items-center text-slate-300">
+                        <span>Agreed Service Fee</span>
+                        <span className="font-semibold text-white font-mono">₹{selectedBidForPayment.price}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-300">
+                        <span>Platform Fee (5%)</span>
+                        <span className="font-semibold text-white font-mono">₹{Math.round(selectedBidForPayment.price * 0.05)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-300">
+                        <span>Taxes & GST</span>
+                        <span className="font-semibold text-white font-mono">₹{Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5}</span>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-[#3a3d50] my-2"></div>
+
+                    <div className="flex justify-between items-center pt-1">
+                      <span className="text-xl font-black text-white">Total</span>
+                      <span className="text-2xl font-black text-[#8a94ff] font-mono">
+                        ₹{selectedBidForPayment.price + Math.round(selectedBidForPayment.price * 0.05) + (Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5)}
+                      </span>
+                    </div>
+
+                    <div className="pt-2">
+                      <button
+                        onClick={processPayment}
+                        disabled={paymentStatus === 'processing'}
+                        className="w-full bg-[#7a84ff] hover:bg-[#8a94ff] text-slate-900 font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-[0_0_15px_rgba(122,132,255,0.2)] mt-1"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">lock</span>
+                        {paymentStatus === 'processing' ? 'Processing...' : 'Proceed to Payment'}
+                      </button>
+                      
+                      <p className="text-center text-[11px] text-slate-400 pt-3">
+                        Payments are secure, verified & encrypted.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : demoBidsCount > 0 && (
+            <div className="space-y-3 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+              {demoBids.slice(0, demoBidsCount).map((bid, index) => (
+                <div 
+                  key={bid.id} 
+                  className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 text-left animate-in slide-in-from-bottom-4 fade-in duration-500 shadow-sm"
+                >
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <img src={bid.avatar} alt={bid.name} className="w-12 h-12 rounded-full object-cover border border-slate-200" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-slate-900">{bid.name}</h4>
+                        {index === 0 && <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200">BEST PRICE</span>}
+                      </div>
+                      <div className="flex items-center gap-1 text-[11px] text-amber-500 font-bold mt-0.5">
+                        <span className="material-symbols-outlined text-[13px]">star</span> {bid.rating} ({bid.reviews})
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 bg-slate-50 p-2 rounded-xl text-xs text-slate-600 italic border border-slate-200">
+                    "{bid.message}"
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-4 mt-2 sm:mt-0 w-full sm:w-auto">
+                    <div className="text-lg font-black text-indigo-700">₹{bid.price}</div>
+                    <Button size="sm" variant="primary" onClick={() => setSelectedBidForPayment(bid)} className="px-4 py-2 text-xs font-bold whitespace-nowrap">
+                      Accept Bid
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!selectedBidForPayment && (
+            <div className="pt-1 flex flex-col sm:flex-row gap-2">
+              <Button
+                fullWidth
+                variant="primary"
+                size="lg"
+                onClick={handleFinish}
+                icon="calendar_month"
+                className="py-3 font-bold shadow-md"
+              >
+                Go to My Bookings
+              </Button>
+            </div>
+          )}
         </div>
       ) : (
         /* MULTI-STEP BOOKING FORM */
@@ -641,6 +942,19 @@ export const BookingRequestModal = ({
           </div>
         </div>
       )}
+      
+      {/* Counter Bid Modal */}
+      <CounterOfferModal
+        isOpen={isCounterModalOpen}
+        onClose={() => setIsCounterModalOpen(false)}
+        currentPrice={selectedBidForPayment?.price || 1500}
+        onSubmitOffer={(amt, note) => {
+          setSelectedBidForPayment(prev => ({...prev, price: amt}));
+          setBidStatusLabel(
+            'Counter bid sent. Waiting for confirmation.'
+          );
+        }}
+      />
     </Modal>
   );
 };

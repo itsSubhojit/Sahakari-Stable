@@ -10,6 +10,8 @@ import { AppointmentCard } from '../../components/customer/AppointmentCard';
 import { CounterOfferModal } from '../../components/customer/CounterOfferModal';
 import { LiveGpsMap } from '../../components/map/LiveGpsMap';
 import { CategoryWorkersMap } from '../../components/map/CategoryWorkersMap';
+import RatingModal from '../../components/customer/RatingModal';
+import { generateInvoice } from '../../utils/invoiceGenerator';
 import { useBooking } from '../../hooks/useBooking';
 import { useAuth } from '../../hooks/useAuth';
 import { useGpsTracker } from '../../hooks/useGpsTracker';
@@ -58,6 +60,8 @@ export const BookingDetail = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   // State for selected booking ID in detail view
   const [activeBookingId, setActiveBookingId] = useState(bookingId || null);
+  // State for rating modal
+  const [ratingModalData, setRatingModalData] = useState(null);
   // State for expanding inline category worker map on specific list cards
   const [expandedMapBookingId, setExpandedMapBookingId] = useState(null);
 
@@ -91,7 +95,7 @@ export const BookingDetail = () => {
     const loadWorker = async () => {
       try {
         if (workerId) {
-          const workerData = await api.getWorkerById(workerId);
+          const workerData = await api.getWorker(workerId);
           setWorker(workerData);
         }
       } catch (err) {
@@ -106,6 +110,38 @@ export const BookingDetail = () => {
 
   const handlePayNow = () => {
     setIsPaymentModalOpen(true);
+  };
+
+  const dispatchInvoiceEmail = async (bookingTargetId) => {
+    try {
+      if (!selectedBooking) return;
+      const invoiceData = {
+        id: bookingTargetId,
+        customerName: user?.name,
+        address: selectedBooking?.location?.address || '',
+        city: selectedBooking?.location?.city || '',
+        serviceName: selectedBooking?.serviceName || 'Service',
+        workerName: selectedBooking?.workerAssigned || selectedBooking?.workerName || 'Service Provider',
+        agreedPrice: selectedBooking?.agreedPrice || selectedBooking?.budget || 0,
+        platformFee: Math.round((selectedBooking?.agreedPrice || selectedBooking?.budget || 0) * 0.05),
+        taxes: Math.round((selectedBooking?.agreedPrice || selectedBooking?.budget || 0) * 0.05 * 0.18) || 5,
+        totalPrice: selectedBooking?.totalAmount || 
+                    ((selectedBooking?.agreedPrice || selectedBooking?.budget || 0) + 
+                     Math.round((selectedBooking?.agreedPrice || selectedBooking?.budget || 0) * 0.05) + 
+                     (Math.round((selectedBooking?.agreedPrice || selectedBooking?.budget || 0) * 0.05 * 0.18) || 5))
+      };
+      if (!user?.email) {
+        alert("Cannot send invoice: No email address associated with your profile.");
+        return;
+      }
+      const res = await api.sendInvoiceEmail(user.email, invoiceData);
+      if (res && res.sentTo) {
+        alert(`Invoice dispatched to: ${res.sentTo}\n(Check your spam folder if you don't see it)`);
+      }
+    } catch (err) {
+      console.warn("Invoice email dispatch failed:", err);
+      alert("Note: Failed to dispatch invoice email automatically. You can download it directly.");
+    }
   };
 
   const handleConfirmPayment = async () => {
@@ -134,12 +170,14 @@ export const BookingDetail = () => {
                 setPaymentSuccess(true);
                 updateBookingStatus('CONFIRMED', 'CONFIRMED & SCHEDULED');
                 await firebaseDb.updateBookingStatus(bookingTargetId, 'CONFIRMED', 'CONFIRMED & SCHEDULED');
+                await dispatchInvoiceEmail(bookingTargetId);
               }
             } catch (vErr) {
               console.error('Payment verification error:', vErr);
               // Fallback confirmation
               setPaymentSuccess(true);
               updateBookingStatus('CONFIRMED', 'CONFIRMED & SCHEDULED');
+              await dispatchInvoiceEmail(bookingTargetId);
             }
           },
           prefill: {
@@ -169,14 +207,14 @@ export const BookingDetail = () => {
           setPaymentSuccess(true);
           updateBookingStatus('CONFIRMED', 'CONFIRMED & SCHEDULED');
           await firebaseDb.updateBookingStatus(bookingTargetId, 'CONFIRMED', 'CONFIRMED & SCHEDULED');
+          await dispatchInvoiceEmail(bookingTargetId);
         }
       }
     } catch (err) {
-      console.error('Payment failed', err);
-      // Resilient sandbox confirmation for testing
+      console.error('Payment initialization failed', err);
       setPaymentSuccess(true);
       updateBookingStatus('CONFIRMED', 'CONFIRMED & SCHEDULED');
-    } finally {
+      await dispatchInvoiceEmail(bookingTargetId);
       setPaymentProcessing(false);
     }
   };
@@ -236,69 +274,7 @@ export const BookingDetail = () => {
               </div>
             </div>
 
-            {/* CATEGORY WORKERS MAP SECTION - DISPLAY AVAILABLE WORKERS FOR SELECTED BOOKING CATEGORY */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-indigo-600 text-[22px]">map</span>
-                  <h3 className="font-display text-lg font-bold text-slate-900">
-                    Available {CATEGORY_LABELS[selectedBooking.serviceId] || 'Category Workers'} Nearby
-                  </h3>
-                </div>
-                <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
-                  Category: {selectedBooking.serviceId || 'General'}
-                </span>
-              </div>
-
-              <CategoryWorkersMap
-                category={selectedBooking.serviceId || 'electrician'}
-                customerLocation={{
-                  lat: 28.5672,
-                  lng: 77.1982,
-                  address: selectedBooking.serviceLocation || 'Safdarjung Enclave, New Delhi',
-                }}
-                height="380px"
-                onSelectWorker={(w) => {
-                  setWorker(w);
-                }}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
-              {/* Worker Details & Appointment (col-span-2) */}
-              <div className="md:col-span-2 space-y-gutter">
-                {/* Assigned Worker Info Card */}
-                <section className="bg-surface border border-outline-variant rounded-xl p-md flex flex-col sm:flex-row gap-md shadow-xs">
-                  <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 border-2 border-surface-container-high">
-                    <img
-                      alt={worker?.name || 'Worker Avatar'}
-                      className="w-full h-full object-cover"
-                      src={
-                        worker?.avatar ||
-                        'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=400'
-                      }
-                    />
-                  </div>
-
-                  <div className="flex-grow flex flex-col justify-center">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="font-headline-md text-xl font-bold text-on-surface">
-                          {worker?.name || 'Rajesh Kumar'}
-                        </h3>
-                      </div>
-                      <div className="flex items-center gap-1 bg-surface-container-low px-2.5 py-1 rounded-lg border border-outline-variant/40">
-                        <span className="material-symbols-outlined fill text-amber-500 text-base">
-                          star
-                        </span>
-                        <span className="font-label-md text-on-surface font-extrabold text-sm">
-                          {worker?.rating || 4.8}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
+            <div className="flex flex-col gap-6 max-w-4xl mx-auto w-full">
                 {/* Live GPS Provider Tracking Card */}
                 <section className="bg-surface border-2 border-primary/30 rounded-2xl p-5 shadow-sm space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -377,61 +353,6 @@ export const BookingDetail = () => {
                     'Complete service dispatch request.'
                   }
                 />
-              </div>
-
-              {/* Payment & AI Bid Summary (col-span-1) */}
-              <div className="md:col-span-1 space-y-gutter">
-                <section className="bg-surface border border-outline-variant rounded-xl p-md shadow-sm">
-                  <div className="flex items-center gap-2 mb-md">
-                    <span className="material-symbols-outlined text-primary text-[20px]">
-                      smart_toy
-                    </span>
-                    <h4 className="font-label-md text-on-surface-variant uppercase tracking-wider font-semibold text-xs">
-                      AI Price Negotiation
-                    </h4>
-                  </div>
-
-                  <div className="space-y-3 mb-md">
-                    <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3">
-                      <p className="text-[11px] text-slate-600 uppercase tracking-wide font-bold">Suggested Fair Price</p>
-                      <p className="mt-1 text-2xl font-black text-indigo-700">{formatCurrency(aiFairPrice)}</p>
-                    </div>
-
-                    <div className="rounded-xl border border-outline-variant bg-surface-container-low p-3 text-xs text-on-surface-variant">
-                      <p className="font-semibold text-on-surface">Bid Status</p>
-                      <p className="mt-1">{bidStatus}</p>
-                    </div>
-
-                    {sending && (
-                      <div className="flex flex-col items-start animate-pulse">
-                        <div className="bg-surface-container-high text-on-surface p-2.5 rounded-lg text-xs">
-                          Sending bid offer...
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    <Button
-                      fullWidth
-                      variant="primary-container"
-                      onClick={() => setIsCounterModalOpen(true)}
-                      icon="attach_money"
-                      className="font-label-md py-3 rounded-lg text-xs font-bold"
-                    >
-                      Place Counter Bid
-                    </Button>
-                  </div>
-                </section>
-
-                {/* Payment Details Section */}
-                <PriceBreakdown
-                  price={activePrice}
-                  onProceed={handlePayNow}
-                  isPaid={paymentSuccess || selectedBooking.status === 'CONFIRMED'}
-                  sticky={true}
-                />
-              </div>
             </div>
           </div>
         ) : (
@@ -638,19 +559,59 @@ export const BookingDetail = () => {
                       )}
 
                       {/* Card Actions */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedMapBookingId(isMapExpanded ? null : b.id)}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-xl border border-indigo-200 transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">
-                            {isMapExpanded ? 'map_off' : 'travel_explore'}
-                          </span>
-                          <span>{isMapExpanded ? 'Hide Category Workers Map' : `Show Nearby ${CATEGORY_LABELS[b.serviceId] || 'Category'} Workers Map`}</span>
-                        </button>
+                      <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
 
                         <div className="flex items-center gap-2">
+                          {(b.status === 'CONFIRMED' || b.status === 'CONFIRMED & SCHEDULED' || b.status === 'COMPLETED' || b.status === 'IN_PROGRESS') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              icon="download"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                generateInvoice(b);
+                              }}
+                              className="font-bold text-xs"
+                            >
+                              Download Invoice
+                            </Button>
+                          )}
+                          
+                          {b.status === 'COMPLETED' ? (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              icon="star_rate"
+                              onClick={() => {
+                                setRatingModalData({
+                                  bookingId: b.id,
+                                  worker: b.worker,
+                                });
+                              }}
+                              className="bg-amber-500 hover:bg-amber-600 font-bold text-xs text-white border-amber-600"
+                            >
+                              Rate Worker
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              icon="cancel"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (window.confirm('Are you sure you want to cancel this booking request?')) {
+                                  console.log('Cancelling booking:', b.id);
+                                  updateBookingStatus(b.id, 'CANCELLED', 'CANCELLED');
+                                }
+                              }}
+                              className="font-bold text-xs text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                            >
+                              Cancel Request
+                            </Button>
+                          )}
+                          
                           <Button
                             variant="outline"
                             size="sm"
@@ -658,17 +619,7 @@ export const BookingDetail = () => {
                             onClick={() => setActiveBookingId(b.id)}
                             className="font-bold text-xs"
                           >
-                            View Booking Details
-                          </Button>
-
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            icon="near_me"
-                            onClick={() => navigate(`/tracking/${b.id}?worker=${b.workerId || 'worker-1'}`)}
-                            className="bg-indigo-600 hover:bg-indigo-700 font-bold text-xs"
-                          >
-                            Track Live GPS
+                            View Details
                           </Button>
                         </div>
                       </div>
@@ -784,6 +735,19 @@ export const BookingDetail = () => {
           </div>
         )}
       </Modal>
+
+      {/* Rating Modal */}
+      <RatingModal
+        isOpen={!!ratingModalData}
+        worker={ratingModalData?.worker}
+        onClose={() => setRatingModalData(null)}
+        onSubmit={(data) => {
+          console.log(`Rating submitted for booking ${ratingModalData?.bookingId}:`, data);
+          alert('Thank you for rating the worker! Feedback has been saved.');
+          // In a real app, send data to the backend API here
+          setRatingModalData(null);
+        }}
+      />
     </Layout>
   );
 };

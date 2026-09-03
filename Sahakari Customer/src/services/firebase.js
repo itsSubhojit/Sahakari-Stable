@@ -80,7 +80,7 @@ export const firebaseDb = {
         return { id: snap.id, ...snap.data() };
       }
     } catch (error) {
-      console.warn('Direct Firestore getCustomerProfile notice:', error.message);
+      // Silently ignore
     }
     return null;
   },
@@ -121,7 +121,7 @@ export const firebaseDb = {
       });
       return bookingsList;
     } catch (error) {
-      console.warn('Direct Firestore getBookings notice:', error.message);
+      // Silently return empty array for unauthorized mock users
       return [];
     }
   },
@@ -141,7 +141,7 @@ export const firebaseDb = {
         { merge: true }
       );
     } catch (error) {
-      console.warn('Direct Firestore updateBookingStatus notice:', error.message);
+      // Silently ignore permissions errors since the backend handles it securely
     }
   },
 

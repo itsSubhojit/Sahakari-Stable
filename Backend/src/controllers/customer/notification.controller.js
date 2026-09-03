@@ -25,3 +25,21 @@ export const markNotificationRead = asyncHandler(async (req, res) => {
   const updated = await markNotificationReadService(req.user.uid, req.params.id);
   res.status(200).json(new ApiResponse(200, updated, "Notification marked as read"));
 });
+
+import { sendInvoiceEmailService } from "../../services/emailOtp.service.js";
+
+/**
+ * POST /api/customer/notifications/send-invoice
+ */
+export const sendInvoiceEmail = asyncHandler(async (req, res) => {
+  let { email, booking } = req.body;
+  if (!email || email === 'customer@sahakari.in') {
+    email = req.user?.email || email;
+  }
+  
+  if (!email || !booking) {
+    return res.status(400).json(new ApiResponse(400, null, "Email and booking details required"));
+  }
+  const result = await sendInvoiceEmailService(email, booking);
+  res.status(200).json(new ApiResponse(200, { ...result, sentTo: email }, "Invoice email dispatched"));
+});

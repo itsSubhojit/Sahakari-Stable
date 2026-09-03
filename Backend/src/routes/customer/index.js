@@ -3,6 +3,7 @@ import profileRoutes from "./profile.routes.js";
 import nearbyRoutes from "./nearby.routes.js";
 import bookingRoutes from "./booking.routes.js";
 import notificationRoutes from "./notification.routes.js";
+import serviceRequestRoutes from "./serviceRequest.routes.js";
 
 const router = Router();
 
@@ -17,5 +18,8 @@ router.use("/bookings", bookingRoutes);
 
 // C9 — Notifications
 router.use("/notifications", notificationRoutes);
+
+// C4 — Service Requests
+router.use("/service-requests", serviceRequestRoutes);
 
 export default router;
