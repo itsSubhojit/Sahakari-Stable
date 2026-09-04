@@ -64,6 +64,16 @@ export const BookingDetail = () => {
   const [ratingModalData, setRatingModalData] = useState(null);
   // State for expanding inline category worker map on specific list cards
   const [expandedMapBookingId, setExpandedMapBookingId] = useState(null);
+  const [actualLocation, setActualLocation] = useState(null);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setActualLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => console.error('Failed to get location:', err)
+      );
+    }
+  }, []);
 
   // Active single booking object
   const selectedBooking = bookings.find((b) => b.id === activeBookingId) || currentBooking || bookings[0];
@@ -378,7 +388,7 @@ export const BookingDetail = () => {
                 size="lg"
                 icon="add_circle"
                 onClick={() => navigate('/book')}
-                className="bg-white text-indigo-900 hover:bg-indigo-50 font-black shadow-lg py-3 px-6 shrink-0"
+                className="bg-white !text-indigo-900 hover:bg-indigo-50 font-black shadow-lg py-3 px-6 shrink-0"
               >
                 Book New Service
               </Button>
@@ -461,19 +471,19 @@ export const BookingDetail = () => {
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3 pb-3 border-b border-outline-variant/50">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
-                            <span className="material-symbols-outlined text-[26px]">{iconName}</span>
+                          <div className="w-12 h-12 rounded-xl bg-primary-container border border-outline-variant text-on-primary-container flex items-center justify-center shrink-0">
+                            <span className="material-symbols-outlined text-[26px] text-primary">{iconName}</span>
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <h3 className="font-display text-base font-extrabold text-slate-900">
+                              <h3 className="font-display text-base font-extrabold text-on-surface">
                                 {b.serviceName || b.serviceId}
                               </h3>
-                              <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-md">
+                              <span className="text-xs font-mono font-bold text-on-surface-variant bg-surface-container-high border border-outline-variant/60 px-2.5 py-0.5 rounded-md">
                                 {b.id}
                               </span>
                             </div>
-                            <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                            <p className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-1">
                               <span className="material-symbols-outlined text-[14px]">calendar_month</span>
                               <span>{b.appointmentDate}</span>
                             </p>
@@ -488,14 +498,14 @@ export const BookingDetail = () => {
                           >
                             {b.statusLabel || b.status}
                           </span>
-                          <span className="font-mono text-base font-black text-indigo-700">
+                          <span className="font-mono text-base font-black text-primary">
                             {formatCurrency(b.totalPrice || b.agreedPrice || 1500)}
                           </span>
                         </div>
                       </div>
 
                       {/* Worker & Job Brief */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-surface-container-lowest border border-outline-variant/60 rounded-xl p-3.5 text-xs">
                         {/* Worker */}
                         <div className="flex items-center gap-3">
                           <img
@@ -504,13 +514,13 @@ export const BookingDetail = () => {
                               b.worker?.avatar ||
                               'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=400'
                             }
-                            className="w-10 h-10 rounded-full object-cover border border-slate-300"
+                            className="w-10 h-10 rounded-full object-cover border border-outline-variant"
                           />
                           <div>
-                            <p className="font-bold text-slate-900 text-sm">
+                            <p className="font-bold text-on-surface text-sm">
                               {b.worker?.name || 'Assigned Sahakari Worker'}
                             </p>
-                            <p className="text-amber-800 font-bold text-[11px]">
+                            <p className="text-amber-600 dark:text-amber-400 font-bold text-[11px]">
                               ★ {b.worker?.rating || 4.8}
                             </p>
                           </div>
@@ -518,10 +528,10 @@ export const BookingDetail = () => {
 
                         {/* Location */}
                         <div className="flex items-center gap-2 truncate">
-                          <span className="material-symbols-outlined text-indigo-600 text-[18px] shrink-0">
+                          <span className="material-symbols-outlined text-primary text-[18px] shrink-0">
                             location_on
                           </span>
-                          <span className="text-slate-700 font-medium truncate">
+                          <span className="text-on-surface-variant font-medium truncate">
                             {b.serviceLocation}
                           </span>
                         </div>
@@ -530,31 +540,39 @@ export const BookingDetail = () => {
                       {/* Expandable Category Workers Map */}
                       {isMapExpanded && (
                         <div className="pt-2 animate-fadeIn space-y-2">
-                          <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                          <div className="flex items-center justify-between text-xs font-bold text-on-surface">
                             <span className="flex items-center gap-1">
-                              <span className="material-symbols-outlined text-indigo-600 text-[18px]">map</span>
+                              <span className="material-symbols-outlined text-primary text-[18px]">map</span>
                               Available {CATEGORY_LABELS[b.serviceId] || 'Workers'} Map
                             </span>
                             <button
                               onClick={() => setExpandedMapBookingId(null)}
-                              className="text-slate-400 hover:text-slate-700 text-xs"
+                              className="text-on-surface-variant hover:text-primary text-xs"
                             >
                               Close Map
                             </button>
                           </div>
-                          <CategoryWorkersMap
-                            category={b.serviceId || 'electrician'}
-                            customerLocation={{
-                              lat: 28.5672,
-                              lng: 77.1982,
-                              address: b.serviceLocation || 'Safdarjung Enclave, New Delhi',
-                            }}
-                            height="340px"
-                            onSelectWorker={(w) => {
-                              setActiveBookingId(b.id);
-                              setWorker(w);
-                            }}
-                          />
+                          {actualLocation ? (
+                            <CategoryWorkersMap
+                              category={b.serviceId || 'electrician'}
+                              customerLocation={{
+                                lat: actualLocation.lat,
+                                lng: actualLocation.lng,
+                                address: b.serviceLocation || 'Your Current Location',
+                              }}
+                              height="340px"
+                              onSelectWorker={(w) => {
+                                setActiveBookingId(b.id);
+                                setWorker(w);
+                              }}
+                            />
+                          ) : (
+                            <div className="h-[340px] w-full flex items-center justify-center bg-surface-container-low rounded-xl border border-outline-variant">
+                              <span className="text-on-surface-variant font-bold text-sm animate-pulse">
+                                Locating you...
+                              </span>
+                            </div>
+                          )}
                         </div>
                       )}
 

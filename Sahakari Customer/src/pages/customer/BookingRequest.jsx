@@ -36,14 +36,26 @@ export const BookingRequest = () => {
   const [demoBidsCount, setDemoBidsCount] = useState(0);
   const [selectedBidForPayment, setSelectedBidForPayment] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState('idle'); // 'idle', 'processing', 'success'
+  const [actualLocation, setActualLocation] = useState(null);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setActualLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => console.error('Failed to get location:', err)
+      );
+    }
+  }, []);
 
   useEffect(() => {
     if (submittedBooking) {
-
-      const t1 = setTimeout(() => setDemoBidsCount(1), 2000);
-      const t2 = setTimeout(() => setDemoBidsCount(2), 4000);
-      const t3 = setTimeout(() => setDemoBidsCount(3), 6000);
-      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+      const t1 = setTimeout(() => setDemoBidsCount(1), 1500);
+      const t2 = setTimeout(() => setDemoBidsCount(2), 3000);
+      const t3 = setTimeout(() => setDemoBidsCount(3), 4500);
+      const t4 = setTimeout(() => setDemoBidsCount(4), 6000);
+      const t5 = setTimeout(() => setDemoBidsCount(5), 7500);
+      const t6 = setTimeout(() => setDemoBidsCount(6), 9000);
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); clearTimeout(t5); clearTimeout(t6); };
     }
   }, [submittedBooking]);
 
@@ -179,6 +191,33 @@ export const BookingRequest = () => {
       avatar: 'https://i.pravatar.cc/150?img=13',
       price: proposedFee > 200 ? proposedFee - 100 : proposedFee,
       message: 'Can start in 30 mins! Professional tools ready.',
+    },
+    {
+      id: 4,
+      name: 'Vikram Singh',
+      rating: 4.5,
+      reviews: 45,
+      avatar: 'https://i.pravatar.cc/150?img=14',
+      price: proposedFee + 100,
+      message: 'I specialize in this. Can drop by tomorrow morning.',
+    },
+    {
+      id: 5,
+      name: 'Manoj Tiwari',
+      rating: 4.9,
+      reviews: 320,
+      avatar: 'https://i.pravatar.cc/150?img=15',
+      price: proposedFee > 300 ? proposedFee - 150 : proposedFee,
+      message: 'Expert service with warranty. Ready to deploy.',
+    },
+    {
+      id: 6,
+      name: 'Ravi Prakash',
+      rating: 4.6,
+      reviews: 90,
+      avatar: 'https://i.pravatar.cc/150?img=16',
+      price: proposedFee,
+      message: 'I have the necessary tools right now.',
     }
   ];
 
@@ -291,103 +330,112 @@ export const BookingRequest = () => {
             </div>
 
             <div className="rounded-2xl overflow-hidden border-2 border-outline-variant/30 shadow-sm relative z-0">
-              <CategoryWorkersMap
-                category={serviceId}
-                customerLocation={{ lat: 28.5672, lng: 77.1982, address: `${streetAddress}, ${city}` }}
-                height="350px"
-              />
+              {actualLocation ? (
+                <CategoryWorkersMap
+                  category={serviceId}
+                  customerLocation={{ lat: actualLocation.lat, lng: actualLocation.lng, address: `${streetAddress}, ${city}` }}
+                  height="350px"
+                />
+              ) : (
+                <div className="h-[350px] w-full flex items-center justify-center bg-surface-container-low text-on-surface-variant font-bold text-sm animate-pulse">
+                  Locating you...
+                </div>
+              )}
             </div>
 
-            <div className="bg-surface-container-low border border-outline-variant rounded-2xl p-4 text-left flex items-center justify-between">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-3xl overflow-hidden shadow-sm flex flex-col mt-6">
+            <div className="bg-surface p-4 px-5 text-left flex items-center justify-between border-b border-outline-variant shadow-xs z-10">
               <div>
-                <h4 className="text-sm font-bold text-on-surface">Incoming Worker Bids</h4>
-                <p className="text-xs text-on-surface-variant">
+                <h4 className="text-base font-bold text-on-surface">Incoming Worker Bids</h4>
+                <p className="text-xs text-on-surface-variant mt-0.5">
                   {demoBidsCount === 0 ? 'Searching for nearby workers...' : `Received ${demoBidsCount} bid${demoBidsCount > 1 ? 's' : ''} so far.`}
                 </p>
               </div>
-              <span className={`material-symbols-outlined text-3xl ${demoBidsCount < 3 && !selectedBidForPayment ? 'text-emerald-500 animate-pulse' : 'text-primary'}`}>
+              <span className={`material-symbols-outlined text-[28px] ${demoBidsCount < 3 && !selectedBidForPayment ? 'text-emerald-500 animate-pulse' : 'text-primary'}`}>
                 notifications_active
               </span>
             </div>
 
             {selectedBidForPayment ? (
-              <div className="bg-[#131521] border border-slate-800 rounded-3xl p-5 shadow-2xl animate-in zoom-in-95 duration-300 text-slate-200 font-sans mx-auto w-full max-w-sm mt-4">
-                {paymentStatus === 'success' ? (
-                  <div className="text-center py-6 space-y-3">
-                    <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-sm animate-bounce">
-                      <span className="material-symbols-outlined text-[32px]">task_alt</span>
+              <div className="p-5 bg-surface">
+                <div className="bg-[#131521] border border-slate-800 rounded-3xl p-5 shadow-2xl animate-in zoom-in-95 duration-300 text-slate-200 font-sans mx-auto w-full max-w-sm mt-4">
+                  {paymentStatus === 'success' ? (
+                    <div className="text-center py-6 space-y-3">
+                      <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-sm animate-bounce">
+                        <span className="material-symbols-outlined text-[32px]">task_alt</span>
+                      </div>
+                      <h3 className="font-black text-xl text-white">Payment Successful!</h3>
+                      <p className="text-sm text-slate-400">Your booking with {selectedBidForPayment.name} is confirmed.</p>
                     </div>
-                    <h3 className="font-black text-xl text-white">Payment Successful!</h3>
-                    <p className="text-sm text-slate-400">Your booking with {selectedBidForPayment.name} is confirmed.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-5 text-left">
-                    {/* Bid Status Section */}
-                    <div className="bg-[#1c1e2d] border border-[#2a2d40] rounded-2xl p-4 space-y-4">
-                      <div>
-                        <h4 className="text-sm font-bold text-white tracking-wide">Bid Status</h4>
-                        <p className="text-xs text-indigo-300 mt-0.5">AI estimate ready</p>
-                      </div>
-                      <button className="w-full bg-[#3d45b8] hover:bg-[#4d55c8] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm">
-                        <span className="material-symbols-outlined text-[18px]">attach_money</span>
-                        Place Counter Bid
-                      </button>
-                    </div>
-
-                    {/* Payment Details Section */}
-                    <div className="bg-[#1c1e2d] border border-[#2a2d40] rounded-2xl p-5 space-y-4">
-                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-widest">
-                        Payment Details
-                      </h4>
-                      
-                      <div className="space-y-2.5 text-sm">
-                        <div className="flex justify-between items-center text-slate-300">
-                          <span>Agreed Service Fee</span>
-                          <span className="font-semibold text-white font-mono">₹{selectedBidForPayment.price}</span>
+                  ) : (
+                    <div className="space-y-5 text-left">
+                      {/* Bid Status Section */}
+                      <div className="bg-[#1c1e2d] border border-[#2a2d40] rounded-2xl p-4 space-y-4">
+                        <div>
+                          <h4 className="text-sm font-bold text-white tracking-wide">Bid Status</h4>
+                          <p className="text-xs text-indigo-300 mt-0.5">AI estimate ready</p>
                         </div>
-                        <div className="flex justify-between items-center text-slate-300">
-                          <span>Platform Fee (5%)</span>
-                          <span className="font-semibold text-white font-mono">₹{Math.round(selectedBidForPayment.price * 0.05)}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-slate-300">
-                          <span>Taxes & GST</span>
-                          <span className="font-semibold text-white font-mono">₹{Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5}</span>
-                        </div>
-                      </div>
-
-                      <div className="border-t border-[#3a3d50] my-2"></div>
-
-                      <div className="flex justify-between items-center pt-1">
-                        <span className="text-xl font-black text-white">Total</span>
-                        <span className="text-2xl font-black text-[#8a94ff] font-mono">
-                          ₹{selectedBidForPayment.price + Math.round(selectedBidForPayment.price * 0.05) + (Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5)}
-                        </span>
-                      </div>
-
-                      <div className="pt-2">
-                        <button
-                          onClick={processPayment}
-                          disabled={paymentStatus === 'processing'}
-                          className="w-full bg-[#7a84ff] hover:bg-[#8a94ff] text-slate-900 font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-[0_0_15px_rgba(122,132,255,0.2)] mt-1"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">lock</span>
-                          {paymentStatus === 'processing' ? 'Processing...' : 'Proceed to Payment'}
+                        <button className="w-full bg-[#3d45b8] hover:bg-[#4d55c8] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm">
+                          <span className="material-symbols-outlined text-[18px]">attach_money</span>
+                          Place Counter Bid
                         </button>
+                      </div>
+
+                      {/* Payment Details Section */}
+                      <div className="bg-[#1c1e2d] border border-[#2a2d40] rounded-2xl p-5 space-y-4">
+                        <h4 className="text-xs font-bold text-slate-300 uppercase tracking-widest">
+                          Payment Details
+                        </h4>
                         
-                        <p className="text-center text-[11px] text-slate-400 pt-3">
-                          Payments are secure, verified & encrypted.
-                        </p>
+                        <div className="space-y-2.5 text-sm">
+                          <div className="flex justify-between items-center text-slate-300">
+                            <span>Agreed Service Fee</span>
+                            <span className="font-semibold text-white font-mono">₹{selectedBidForPayment.price}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-slate-300">
+                            <span>Platform Fee (5%)</span>
+                            <span className="font-semibold text-white font-mono">₹{Math.round(selectedBidForPayment.price * 0.05)}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-slate-300">
+                            <span>Taxes & GST</span>
+                            <span className="font-semibold text-white font-mono">₹{Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5}</span>
+                          </div>
+                        </div>
+
+                        <div className="border-t border-[#3a3d50] my-2"></div>
+
+                        <div className="flex justify-between items-center pt-1">
+                          <span className="text-xl font-black text-white">Total</span>
+                          <span className="text-2xl font-black text-[#8a94ff] font-mono">
+                            ₹{selectedBidForPayment.price + Math.round(selectedBidForPayment.price * 0.05) + (Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5)}
+                          </span>
+                        </div>
+
+                        <div className="pt-2">
+                          <button
+                            onClick={processPayment}
+                            disabled={paymentStatus === 'processing'}
+                            className="w-full bg-[#7a84ff] hover:bg-[#8a94ff] text-slate-900 font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-[0_0_15px_rgba(122,132,255,0.2)] mt-1"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">lock</span>
+                            {paymentStatus === 'processing' ? 'Processing...' : 'Proceed to Payment'}
+                          </button>
+                          
+                          <p className="text-center text-[11px] text-slate-400 pt-3">
+                            Payments are secure, verified & encrypted.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            ) : demoBidsCount > 0 && (
-              <div className="space-y-3">
+            ) : demoBidsCount > 0 ? (
+              <div className="p-4 space-y-3 max-h-[260px] overflow-y-auto custom-scrollbar bg-surface-container-low/50">
                 {demoBids.slice(0, demoBidsCount).map((bid, index) => (
                   <div 
                     key={bid.id} 
-                    className="bg-surface border border-outline-variant rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 text-left animate-in slide-in-from-bottom-4 fade-in duration-500 shadow-sm"
+                    className="bg-surface border border-outline-variant rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 text-left animate-in slide-in-from-bottom-4 fade-in duration-500 shadow-sm hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-center gap-3 w-full sm:w-auto">
                       <img src={bid.avatar} alt={bid.name} className="w-12 h-12 rounded-full object-cover border border-outline-variant" />
@@ -415,20 +463,28 @@ export const BookingRequest = () => {
                   </div>
                 ))}
               </div>
+            ) : (
+               <div className="p-8 text-center bg-surface-container-low/50">
+                  <div className="inline-block animate-spin w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full mb-3"></div>
+                  <p className="text-sm text-on-surface-variant font-medium animate-pulse">Waiting for workers to bid...</p>
+               </div>
             )}
-
+            
             {!selectedBidForPayment && (
-              <Button
-                variant="primary"
-                size="lg"
-                fullWidth
-                onClick={() => navigate('/booking')}
-                icon="calendar_month"
-                className="py-3.5 font-bold shadow-md"
-              >
-                Go to My Bookings
-              </Button>
+              <div className="p-4 border-t border-outline-variant/60 bg-surface">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  onClick={() => navigate('/booking')}
+                  icon="calendar_month"
+                  className="py-3.5 font-bold shadow-md"
+                >
+                  Go to My Bookings
+                </Button>
+              </div>
             )}
+          </div>
           </div>
         ) : (
           <>

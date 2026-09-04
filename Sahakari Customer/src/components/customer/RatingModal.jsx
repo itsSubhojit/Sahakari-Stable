@@ -30,7 +30,7 @@ const RatingModal = ({ isOpen, onClose, worker, onSubmit }) => {
           <h2 className="text-lg font-bold text-primary">Rate your Worker</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-full text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="p-1 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -50,10 +50,10 @@ const RatingModal = ({ isOpen, onClose, worker, onSubmit }) => {
               </div>
             )}
             <div className="text-center">
-              <h3 className="font-bold text-slate-800 text-lg">
+              <h3 className="font-bold text-on-surface text-lg">
                 {worker?.name || 'Worker'}
               </h3>
-              <p className="text-xs text-slate-500">How was your experience?</p>
+              <p className="text-xs text-on-surface-variant">How was your experience?</p>
             </div>
           </div>
 
@@ -72,7 +72,7 @@ const RatingModal = ({ isOpen, onClose, worker, onSubmit }) => {
                   className={`material-symbols-outlined text-4xl transition-colors ${
                     star <= (hoverRating || rating)
                       ? 'text-amber-400 [font-variation-settings:\'FILL\'_1]'
-                      : 'text-slate-300'
+                      : 'text-outline-variant'
                   }`}
                 >
                   star
@@ -88,7 +88,7 @@ const RatingModal = ({ isOpen, onClose, worker, onSubmit }) => {
 
           {/* Review Text */}
           <div className="space-y-2">
-            <label htmlFor="review" className="text-xs font-bold text-slate-700">
+            <label htmlFor="review" className="text-xs font-bold text-on-surface-variant">
               Leave a Review (Optional)
             </label>
             <textarea
@@ -97,7 +97,7 @@ const RatingModal = ({ isOpen, onClose, worker, onSubmit }) => {
               value={review}
               onChange={(e) => setReview(e.target.value)}
               placeholder="Tell us what you liked (or didn't like)..."
-              className="w-full text-sm p-3 border border-outline-variant rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+              className="w-full text-sm p-3 border border-outline-variant rounded-xl bg-surface-container-low text-on-surface focus:bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
             />
           </div>
 

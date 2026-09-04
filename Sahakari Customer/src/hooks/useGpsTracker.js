@@ -60,9 +60,9 @@ export const calculateBearing = (lat1, lon1, lat2, lon2) => {
   const bearing = ((θ * 180) / Math.PI + 360) % 360;
   return bearing;
 };
-
 export function useGpsTracker(customWaypoints = null, customCustomerLocation = null) {
-  const waypoints = customWaypoints || DEFAULT_ROUTE_COORDINATES;
+  const [dynamicWaypoints, setDynamicWaypoints] = useState(null);
+  const waypoints = customWaypoints || dynamicWaypoints || DEFAULT_ROUTE_COORDINATES;
   const customerLoc = customCustomerLocation || DEFAULT_CUSTOMER_LOCATION;
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -75,10 +75,10 @@ export function useGpsTracker(customWaypoints = null, customCustomerLocation = n
 
   // Worker live coordinates
   const [workerPosition, setWorkerPosition] = useState({
-    lat: waypoints[0].lat,
-    lng: waypoints[0].lng,
+    lat: waypoints[0]?.lat || 0,
+    lng: waypoints[0]?.lng || 0,
     heading: 0,
-    speed: waypoints[0].speed,
+    speed: waypoints[0]?.speed || 0,
     altitude: 215, // meters
     accuracy: 3, // meters
     battery: 88,
@@ -87,14 +87,33 @@ export function useGpsTracker(customWaypoints = null, customCustomerLocation = n
   // Telemetry metrics
   const [distanceRemainingMeters, setDistanceRemainingMeters] = useState(2400);
   const [etaSeconds, setEtaSeconds] = useState(480);
-  const [currentInstruction, setCurrentInstruction] = useState(waypoints[0].instruction);
+  const [currentInstruction, setCurrentInstruction] = useState(waypoints[0]?.instruction || '');
   const [nextInstruction, setNextInstruction] = useState(waypoints[1]?.instruction || '');
   const [journeyStatus, setJourneyStatus] = useState('ON_THE_WAY'); // 'ON_THE_WAY', 'NEARBY', 'ARRIVED'
 
   const animFrameRef = useRef(null);
   const lastTimeRef = useRef(Date.now());
 
-  // Handle browser Geolocation if user enables "My Real GPS"
+  const generateDynamicWaypoints = useCallback((destination) => {
+    const points = [];
+    const steps = 10;
+    // Worker starts roughly 3km away
+    const startLat = destination.lat - 0.02;
+    const startLng = destination.lng - 0.015;
+    
+    for (let i = 0; i <= steps; i++) {
+      const p = i / steps;
+      points.push({
+        lat: startLat + (destination.lat - startLat) * p,
+        lng: startLng + (destination.lng - startLng) * p,
+        instruction: i === 0 ? 'Worker departed hub' : (i === steps ? 'Arriving at your location' : 'En route to destination'),
+        speed: 20 + Math.random() * 20,
+        street: 'Service Route'
+      });
+    }
+    return points;
+  }, []);
+
   const requestRealGps = useCallback(() => {
     if (!navigator.geolocation) {
       setRealGpsError('Geolocation is not supported by your browser.');
@@ -103,15 +122,24 @@ export function useGpsTracker(customWaypoints = null, customCustomerLocation = n
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude, accuracy } = position.coords;
-        setRealGpsLocation({
+        const actualLoc = {
           lat: latitude,
           lng: longitude,
           accuracy: Math.round(accuracy),
           address: 'Current Live GPS Location',
           label: 'Your Live Position',
-        });
+        };
+        setRealGpsLocation(actualLoc);
         setIsUsingRealGps(true);
         setRealGpsError(null);
+        
+        // Snap the route to the new location
+        const newWaypoints = generateDynamicWaypoints(actualLoc);
+        setDynamicWaypoints(newWaypoints);
+        setCurrentIndex(0);
+        setProgress(0);
+        setIsPlaying(true);
+        setWorkerPosition(prev => ({ ...prev, lat: newWaypoints[0].lat, lng: newWaypoints[0].lng }));
       },
       (err) => {
         console.warn('Geolocation error:', err);
@@ -119,7 +147,12 @@ export function useGpsTracker(customWaypoints = null, customCustomerLocation = n
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
-  }, []);
+  }, [generateDynamicWaypoints]);
+
+  // Automatically request real GPS location on mount
+  useEffect(() => {
+    requestRealGps();
+  }, [requestRealGps]);
 
   // Main simulation loop
   useEffect(() => {
