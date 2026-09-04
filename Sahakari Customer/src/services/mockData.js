@@ -80,8 +80,6 @@ export const mockWorkers = [
     coopMember: true,
     completedJobs: 312,
     skills: ['Copper Pipe Repair', 'Emergency Shutoff', 'Leak Detection', 'Drain Clearing', 'Sanitary Fitting'],
-    lat: 28.5535,
-    lng: 77.2062,
     badge: 'Coop Partner • Tier 1',
   },
   {
@@ -102,8 +100,6 @@ export const mockWorkers = [
     coopMember: true,
     completedJobs: 215,
     skills: ['MCB Tripping Isolation', 'Inverter Wiring', 'Insulation Testing', 'Smart Switch Setup'],
-    lat: 28.5612,
-    lng: 77.2014,
     badge: 'Coop Partner • Tier 1',
   },
   {
@@ -124,8 +120,6 @@ export const mockWorkers = [
     coopMember: true,
     completedJobs: 189,
     skills: ['R32 Refrigerant Gas Refill', 'Dual Capacitor Test', 'Inverter PCB Diagnostic', 'Deep Coil Jet Wash'],
-    lat: 28.5678,
-    lng: 77.1965,
     badge: 'Certified Specialist',
   },
   {
@@ -146,8 +140,6 @@ export const mockWorkers = [
     coopMember: true,
     completedJobs: 278,
     skills: ['Lock Mortise Repair', 'Hydraulic Hinge Fitting', 'Modular Furniture Assembly', 'Wood Polish'],
-    lat: 28.5710,
-    lng: 77.1920,
     badge: 'Coop Partner',
   },
 ];

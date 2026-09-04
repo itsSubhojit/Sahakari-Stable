@@ -32,7 +32,7 @@ export const LiveTracking = () => {
   useEffect(() => {
     const fetchWorker = async () => {
       try {
-        const data = await api.getWorkerById(workerId);
+        const data = await api.getWorker(workerId);
         setWorker(data);
       } catch (err) {
         console.error('Failed to load worker data for tracking', err);
@@ -115,17 +115,6 @@ export const LiveTracking = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* SOS Emergency button */}
-            <button
-              type="button"
-              onClick={() => setSosModalOpen(true)}
-              className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[16px] text-red-600">
-                emergency
-              </span>
-              {t('tracking.safetySos')}
-            </button>
 
             {/* Share link button */}
             <button
@@ -190,50 +179,7 @@ export const LiveTracking = () => {
         worker={worker}
       />
 
-      {/* Emergency SOS Safety Modal */}
-      <Modal
-        isOpen={sosModalOpen}
-        onClose={() => setSosModalOpen(false)}
-        title={t('tracking.sosTitle')}
-      >
-        <div className="space-y-4 py-2">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-            <span className="material-symbols-outlined text-red-600 text-[28px] flex-shrink-0">
-              shield_with_heart
-            </span>
-            <div>
-              <h4 className="text-sm font-bold text-red-900">
-                {t('tracking.sosHeading')}
-              </h4>
-              <p className="text-xs text-red-700 mt-1">
-                {t('tracking.sosDesc')}
-              </p>
-            </div>
-          </div>
 
-          <div className="space-y-2">
-            <a
-              href="tel:112"
-              className="w-full flex items-center justify-between p-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm transition-all shadow-xs"
-            >
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined">call</span>
-                <span>{t('tracking.emergencyHotline')}</span>
-              </div>
-              <span className="text-xs bg-white/20 px-2 py-0.5 rounded-md">{t('tracking.dial')}</span>
-            </a>
-          </div>
-
-          <Button
-            fullWidth
-            variant="outline"
-            onClick={() => setSosModalOpen(false)}
-            className="mt-2"
-          >
-            {t('tracking.closeSafety')}
-          </Button>
-        </div>
-      </Modal>
     </Layout>
   );
 };

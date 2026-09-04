@@ -45,10 +45,13 @@ export const BookingRequestModal = ({
 
   useEffect(() => {
     if (successBooking) {
-      const t1 = setTimeout(() => setDemoBidsCount(1), 2000);
-      const t2 = setTimeout(() => setDemoBidsCount(2), 4000);
-      const t3 = setTimeout(() => setDemoBidsCount(3), 6000);
-      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+      const t1 = setTimeout(() => setDemoBidsCount(1), 1500);
+      const t2 = setTimeout(() => setDemoBidsCount(2), 3000);
+      const t3 = setTimeout(() => setDemoBidsCount(3), 4500);
+      const t4 = setTimeout(() => setDemoBidsCount(4), 6000);
+      const t5 = setTimeout(() => setDemoBidsCount(5), 7500);
+      const t6 = setTimeout(() => setDemoBidsCount(6), 9000);
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); clearTimeout(t5); clearTimeout(t6); };
     }
   }, [successBooking]);
 
@@ -226,6 +229,33 @@ export const BookingRequestModal = ({
       avatar: 'https://i.pravatar.cc/150?img=13',
       price: proposedFee > 200 ? proposedFee - 100 : proposedFee,
       message: 'Can start in 30 mins! Professional tools ready.',
+    },
+    {
+      id: 4,
+      name: 'Vikram Singh',
+      rating: 4.5,
+      reviews: 45,
+      avatar: 'https://i.pravatar.cc/150?img=14',
+      price: proposedFee + 100,
+      message: 'I specialize in this. Can drop by tomorrow morning.',
+    },
+    {
+      id: 5,
+      name: 'Manoj Tiwari',
+      rating: 4.9,
+      reviews: 320,
+      avatar: 'https://i.pravatar.cc/150?img=15',
+      price: proposedFee > 300 ? proposedFee - 150 : proposedFee,
+      message: 'Expert service with warranty. Ready to deploy.',
+    },
+    {
+      id: 6,
+      name: 'Ravi Prakash',
+      rating: 4.6,
+      reviews: 90,
+      avatar: 'https://i.pravatar.cc/150?img=16',
+      price: proposedFee,
+      message: 'I have the necessary tools right now.',
     }
   ];
 
@@ -385,161 +415,170 @@ export const BookingRequestModal = ({
             }}
           />
 
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left flex items-center justify-between">
-            <div>
-              <h4 className="text-sm font-bold text-slate-900">Incoming Worker Bids</h4>
-              <p className="text-xs text-slate-600">
-                {demoBidsCount === 0 ? 'Searching for nearby workers...' : `Received ${demoBidsCount} bid${demoBidsCount > 1 ? 's' : ''} so far.`}
-              </p>
+          <div className="bg-slate-50/50 border border-slate-200 rounded-3xl overflow-hidden shadow-sm flex flex-col">
+            <div className="bg-slate-50 p-4 px-5 text-left flex items-center justify-between border-b border-slate-200 shadow-xs z-10">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">Incoming Worker Bids</h4>
+                <p className="text-xs text-slate-600">
+                  {demoBidsCount === 0 ? 'Searching for nearby workers...' : `Received ${demoBidsCount} bid${demoBidsCount > 1 ? 's' : ''} so far.`}
+                </p>
+              </div>
+              <span className={`material-symbols-outlined text-3xl ${demoBidsCount < 3 && !selectedBidForPayment ? 'text-emerald-500 animate-pulse' : 'text-indigo-600'}`}>
+                notifications_active
+              </span>
             </div>
-            <span className={`material-symbols-outlined text-3xl ${demoBidsCount < 3 && !selectedBidForPayment ? 'text-emerald-500 animate-pulse' : 'text-indigo-600'}`}>
-              notifications_active
-            </span>
-          </div>
 
-          {selectedBidForPayment ? (
-            <div className="bg-[#131521] border border-slate-800 rounded-3xl p-5 shadow-2xl animate-in zoom-in-95 duration-300 text-slate-200 font-sans mx-auto w-full max-w-sm">
-              {paymentStatus === 'success' ? (
-                <div className="text-center py-6 space-y-4">
-                  <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-sm animate-bounce">
-                    <span className="material-symbols-outlined text-[32px]">task_alt</span>
-                  </div>
-                  <h3 className="font-black text-xl text-white">Payment Successful!</h3>
-                  <p className="text-sm text-slate-400">Your booking with {selectedBidForPayment.name} is confirmed.</p>
-                  
-                  <div className="bg-emerald-900/30 border border-emerald-500/30 rounded-xl p-3 text-emerald-400 text-xs font-semibold flex items-center justify-center gap-2">
-                    <span className="material-symbols-outlined text-[16px]">mail</span>
-                    Booking confirmation emailed to {user?.email || 'your inbox'}!
-                  </div>
-                  
-                  <div className="flex gap-2 mt-4">
-                    <button
-                      onClick={() => {
-                        generateInvoice({
-                          id: successBooking?.id || `BK-${Date.now().toString().slice(-4)}`,
-                          customerName: user?.name,
-                          address: streetAddress,
-                          city: city,
-                          serviceName: selectedCatObj.name,
-                          workerName: selectedBidForPayment.name,
-                          agreedPrice: selectedBidForPayment.price,
-                          platformFee: Math.round(selectedBidForPayment.price * 0.05),
-                          taxes: Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5,
-                          totalPrice: selectedBidForPayment.price + Math.round(selectedBidForPayment.price * 0.05) + (Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5)
-                        });
-                      }}
-                      className="flex-1 bg-[#2a2d40] hover:bg-[#3a3d50] text-slate-200 border border-slate-700 font-bold py-3 px-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">download</span>
-                      Invoice
-                    </button>
-                    <button
-                      onClick={handleFinish}
-                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm"
-                    >
-                      Done <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-5 text-left">
-                  {/* Bid Status Section */}
-                  <div className="bg-[#1c1e2d] border border-[#2a2d40] rounded-2xl p-4 space-y-4">
-                    <div>
-                      <h4 className="text-sm font-bold text-white tracking-wide">Bid Status</h4>
-                      <p className="text-xs text-indigo-300 mt-0.5">{bidStatusLabel}</p>
-                    </div>
-                    <button 
-                      onClick={() => setIsCounterModalOpen(true)}
-                      className="w-full bg-[#3d45b8] hover:bg-[#4d55c8] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">attach_money</span>
-                      Place Counter Bid
-                    </button>
-                  </div>
-
-                  {/* Payment Details Section */}
-                  <div className="bg-[#1c1e2d] border border-[#2a2d40] rounded-2xl p-5 space-y-4">
-                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-widest">
-                      Payment Details
-                    </h4>
-                    
-                    <div className="space-y-2.5 text-sm">
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span>Agreed Service Fee</span>
-                        <span className="font-semibold text-white font-mono">₹{selectedBidForPayment.price}</span>
+            {selectedBidForPayment ? (
+              <div className="p-5 bg-white">
+                <div className="bg-[#131521] border border-slate-800 rounded-3xl p-5 shadow-2xl animate-in zoom-in-95 duration-300 text-slate-200 font-sans mx-auto w-full max-w-sm">
+                  {paymentStatus === 'success' ? (
+                    <div className="text-center py-6 space-y-4">
+                      <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-sm animate-bounce">
+                        <span className="material-symbols-outlined text-[32px]">task_alt</span>
                       </div>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span>Platform Fee (5%)</span>
-                        <span className="font-semibold text-white font-mono">₹{Math.round(selectedBidForPayment.price * 0.05)}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span>Taxes & GST</span>
-                        <span className="font-semibold text-white font-mono">₹{Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5}</span>
-                      </div>
-                    </div>
-
-                    <div className="border-t border-[#3a3d50] my-2"></div>
-
-                    <div className="flex justify-between items-center pt-1">
-                      <span className="text-xl font-black text-white">Total</span>
-                      <span className="text-2xl font-black text-[#8a94ff] font-mono">
-                        ₹{selectedBidForPayment.price + Math.round(selectedBidForPayment.price * 0.05) + (Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5)}
-                      </span>
-                    </div>
-
-                    <div className="pt-2">
-                      <button
-                        onClick={processPayment}
-                        disabled={paymentStatus === 'processing'}
-                        className="w-full bg-[#7a84ff] hover:bg-[#8a94ff] text-slate-900 font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-[0_0_15px_rgba(122,132,255,0.2)] mt-1"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">lock</span>
-                        {paymentStatus === 'processing' ? 'Processing...' : 'Proceed to Payment'}
-                      </button>
+                      <h3 className="font-black text-xl text-white">Payment Successful!</h3>
+                      <p className="text-sm text-slate-400">Your booking with {selectedBidForPayment.name} is confirmed.</p>
                       
-                      <p className="text-center text-[11px] text-slate-400 pt-3">
-                        Payments are secure, verified & encrypted.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : demoBidsCount > 0 && (
-            <div className="space-y-3 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
-              {demoBids.slice(0, demoBidsCount).map((bid, index) => (
-                <div 
-                  key={bid.id} 
-                  className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 text-left animate-in slide-in-from-bottom-4 fade-in duration-500 shadow-sm"
-                >
-                  <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <img src={bid.avatar} alt={bid.name} className="w-12 h-12 rounded-full object-cover border border-slate-200" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-slate-900">{bid.name}</h4>
-                        {index === 0 && <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200">BEST PRICE</span>}
+                      <div className="bg-emerald-900/30 border border-emerald-500/30 rounded-xl p-3 text-emerald-400 text-xs font-semibold flex items-center justify-center gap-2">
+                        <span className="material-symbols-outlined text-[16px]">mail</span>
+                        Booking confirmation emailed to {user?.email || 'your inbox'}!
                       </div>
-                      <div className="flex items-center gap-1 text-[11px] text-amber-500 font-bold mt-0.5">
-                        <span className="material-symbols-outlined text-[13px]">star</span> {bid.rating} ({bid.reviews})
+                      
+                      <div className="flex gap-2 mt-4">
+                        <button
+                          onClick={() => {
+                            generateInvoice({
+                              id: successBooking?.id || `BK-${Date.now().toString().slice(-4)}`,
+                              customerName: user?.name,
+                              address: streetAddress,
+                              city: city,
+                              serviceName: selectedCatObj.name,
+                              workerName: selectedBidForPayment.name,
+                              agreedPrice: selectedBidForPayment.price,
+                              platformFee: Math.round(selectedBidForPayment.price * 0.05),
+                              taxes: Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5,
+                              totalPrice: selectedBidForPayment.price + Math.round(selectedBidForPayment.price * 0.05) + (Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5)
+                            });
+                          }}
+                          className="flex-1 bg-[#2a2d40] hover:bg-[#3a3d50] text-slate-200 border border-slate-700 font-bold py-3 px-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">download</span>
+                          Invoice
+                        </button>
+                        <button
+                          onClick={handleFinish}
+                          className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm"
+                        >
+                          Done <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                        </button>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex-1 bg-slate-50 p-2 rounded-xl text-xs text-slate-600 italic border border-slate-200">
-                    "{bid.message}"
-                  </div>
+                  ) : (
+                    <div className="space-y-5 text-left">
+                      {/* Bid Status Section */}
+                      <div className="bg-[#1c1e2d] border border-[#2a2d40] rounded-2xl p-4 space-y-4">
+                        <div>
+                          <h4 className="text-sm font-bold text-white tracking-wide">Bid Status</h4>
+                          <p className="text-xs text-indigo-300 mt-0.5">{bidStatusLabel}</p>
+                        </div>
+                        <button 
+                          onClick={() => setIsCounterModalOpen(true)}
+                          className="w-full bg-[#3d45b8] hover:bg-[#4d55c8] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">attach_money</span>
+                          Place Counter Bid
+                        </button>
+                      </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-4 mt-2 sm:mt-0 w-full sm:w-auto">
-                    <div className="text-lg font-black text-indigo-700">₹{bid.price}</div>
-                    <Button size="sm" variant="primary" onClick={() => setSelectedBidForPayment(bid)} className="px-4 py-2 text-xs font-bold whitespace-nowrap">
-                      Accept Bid
-                    </Button>
-                  </div>
+                      {/* Payment Details Section */}
+                      <div className="bg-[#1c1e2d] border border-[#2a2d40] rounded-2xl p-5 space-y-4">
+                        <h4 className="text-xs font-bold text-slate-300 uppercase tracking-widest">
+                          Payment Details
+                        </h4>
+                        
+                        <div className="space-y-2.5 text-sm">
+                          <div className="flex justify-between items-center text-slate-300">
+                            <span>Agreed Service Fee</span>
+                            <span className="font-semibold text-white font-mono">₹{selectedBidForPayment.price}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-slate-300">
+                            <span>Platform Fee (5%)</span>
+                            <span className="font-semibold text-white font-mono">₹{Math.round(selectedBidForPayment.price * 0.05)}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-slate-300">
+                            <span>Taxes & GST</span>
+                            <span className="font-semibold text-white font-mono">₹{Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5}</span>
+                          </div>
+                        </div>
+
+                        <div className="border-t border-[#3a3d50] my-2"></div>
+
+                        <div className="flex justify-between items-center pt-1">
+                          <span className="text-xl font-black text-white">Total</span>
+                          <span className="text-2xl font-black text-[#8a94ff] font-mono">
+                            ₹{selectedBidForPayment.price + Math.round(selectedBidForPayment.price * 0.05) + (Math.round(selectedBidForPayment.price * 0.05 * 0.18) || 5)}
+                          </span>
+                        </div>
+
+                        <div className="pt-2">
+                          <button
+                            onClick={processPayment}
+                            disabled={paymentStatus === 'processing'}
+                            className="w-full bg-[#7a84ff] hover:bg-[#8a94ff] text-slate-900 font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-[0_0_15px_rgba(122,132,255,0.2)] mt-1"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">lock</span>
+                            {paymentStatus === 'processing' ? 'Processing...' : 'Proceed to Payment'}
+                          </button>
+                          
+                          <p className="text-center text-[11px] text-slate-400 pt-3">
+                            Payments are secure, verified & encrypted.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ) : demoBidsCount > 0 ? (
+              <div className="p-4 space-y-3 max-h-[260px] overflow-y-auto custom-scrollbar bg-slate-100/50">
+                {demoBids.slice(0, demoBidsCount).map((bid, index) => (
+                  <div 
+                    key={bid.id} 
+                    className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 text-left animate-in slide-in-from-bottom-4 fade-in duration-500 shadow-sm"
+                  >
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                      <img src={bid.avatar} alt={bid.name} className="w-12 h-12 rounded-full object-cover border border-slate-200" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-slate-900">{bid.name}</h4>
+                          {index === 0 && <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200">BEST PRICE</span>}
+                        </div>
+                        <div className="flex items-center gap-1 text-[11px] text-amber-500 font-bold mt-0.5">
+                          <span className="material-symbols-outlined text-[13px]">star</span> {bid.rating} ({bid.reviews})
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex-1 bg-slate-50 p-2 rounded-xl text-xs text-slate-600 italic border border-slate-200">
+                      "{bid.message}"
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-4 mt-2 sm:mt-0 w-full sm:w-auto">
+                      <div className="text-lg font-black text-indigo-700">₹{bid.price}</div>
+                      <Button size="sm" variant="primary" onClick={() => setSelectedBidForPayment(bid)} className="px-4 py-2 text-xs font-bold whitespace-nowrap">
+                        Accept Bid
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+               <div className="p-8 text-center bg-slate-100/50">
+                  <div className="inline-block animate-spin w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full mb-3"></div>
+                  <p className="text-sm text-slate-500 font-medium animate-pulse">Waiting for workers to bid...</p>
+               </div>
+            )}
+          </div>
 
           {!selectedBidForPayment && (
             <div className="pt-1 flex flex-col sm:flex-row gap-2">
